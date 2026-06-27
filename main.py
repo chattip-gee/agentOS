@@ -1,6 +1,6 @@
 # main.py
 # AgentOS - Main Orchestrator
-# The brain of AgentOS that coordinates all agents to complete tasks
+# Coordinates multiple AI agents across different LLM providers
 
 import uuid
 from core.registry import AgentRegistry
@@ -8,6 +8,8 @@ from core.message_bus import MessageBus
 from agents.research_agent import ResearchAgent
 from agents.analyst_agent import AnalystAgent
 from agents.writer_agent import WriterAgent
+from agents.glm_agent import GLMAgent
+from agents.deepseek_agent import DeepSeekAgent
 from agents.code_agent import CodeAgent
 from tools.drive_tool import DriveTool
 
@@ -15,12 +17,13 @@ from tools.drive_tool import DriveTool
 def run_agentos(topic: str, mode: str = "research"):
     """
     Main AgentOS pipeline.
-    Orchestrates all agents to complete tasks based on selected mode.
+    Orchestrates agents across Gemini, GLM, and DeepSeek providers.
     mode: 'research' for market research, 'developer' for code help
     """
 
     print("\n" + "="*60)
     print("🤖 AgentOS: The Operating System for AI Agents")
+    print("🌍 Providers: Gemini (Google) + GLM (Zhipu AI) + DeepSeek")
     print("="*60)
 
     # Generate unique task ID for tracking
@@ -43,7 +46,7 @@ def run_agentos(topic: str, mode: str = "research"):
     print("🔧 Registering agents into AgentOS...\n")
 
     if mode == "developer":
-        # Developer mode — use Code Agent only
+        # Developer mode — Code Agent powered by DeepSeek
         code_agent = CodeAgent(registry, message_bus)
         registry.list_agents()
 
@@ -57,51 +60,69 @@ def run_agentos(topic: str, mode: str = "research"):
         )
 
     else:
-        # Research mode — use Research + Analyst + Writer agents
+        # Research mode — Multi-provider pipeline
+        # Gemini → Research | DeepSeek → Analysis | GLM → Advisory | Gemini → Write
         research_agent = ResearchAgent(registry, message_bus)
         analyst_agent = AnalystAgent(registry, message_bus)
+        glm_agent = GLMAgent(registry, message_bus)
+        deepseek_agent = DeepSeekAgent(registry, message_bus)
         writer_agent = WriterAgent(registry, message_bus)
         registry.list_agents()
 
         print("="*60)
-        print("🚀 AgentOS: Starting research pipeline...")
+        print("🚀 AgentOS: Starting multi-provider pipeline...")
         print("="*60)
 
-        # Research Agent runs first
+        # Step 1: Gemini researches the topic
         research_result = research_agent.run(
             topic=topic,
             task_id=task_id
         )
 
-        # Analyst Agent builds on research output
+        # Step 2: DeepSeek analyzes strategically
         analysis_result = analyst_agent.run(
             research_result=research_result,
             topic=topic,
             task_id=task_id
         )
 
-        # Writer Agent synthesizes everything into final report
-        final_report = writer_agent.run(
+        # Step 3: GLM provides strategic advisory
+        glm_result = glm_agent.run(
             research_result=research_result,
-            analysis_result=analysis_result,
             topic=topic,
             task_id=task_id
         )
 
-    # Step 4: Display final report
+        # Step 4: DeepSeek validates all findings
+        deepseek_result = deepseek_agent.run(
+            research_result=research_result,
+            glm_result=glm_result,
+            topic=topic,
+            task_id=task_id
+        )
+
+        # Step 5: Gemini synthesizes everything into final report
+        final_report = writer_agent.run(
+            research_result=research_result,
+            analysis_result=analysis_result + "\n\n" + glm_result + "\n\n" + deepseek_result,
+            topic=topic,
+            task_id=task_id
+        )
+
+    # Display final report
     print("\n" + "="*60)
     print("📄 FINAL REPORT")
     print("="*60)
     print(final_report)
 
-    # Step 5: Save report to Google Drive via MCP
+    # Save to Google Drive via MCP
     drive_link = drive_tool.save_report(
         filename=f"AgentOS_{mode}_Report",
         content=final_report,
         task_id=task_id
     )
 
-    # Step 6: Show message history as audit trail
+    # Show audit trail
     print("\n" + "="*60)
     print("📨 AgentOS Message History (Audit Trail)")
     print("="*60)
@@ -120,11 +141,12 @@ if __name__ == "__main__":
     print("\n" + "="*60)
     print("🤖 Welcome to AgentOS")
     print("    The Operating System for AI Agents")
+    print("    Powered by Gemini + GLM + DeepSeek")
     print("="*60)
 
-    # Step 1: Select mode
+    # Select mode
     print("\n🎯 Select Mode:")
-    print("  1. Research Mode  — Market research & business analysis")
+    print("  1. Research Mode  — Multi-provider market research & analysis")
     print("  2. Developer Mode — Code writing, bug fixing & explanation")
     print()
     mode_input = input("Enter mode (1 or 2): ").strip()
@@ -135,11 +157,10 @@ if __name__ == "__main__":
         print()
         print("Examples:")
         print("  • Write a Python function to read a CSV and return statistics")
-        print("  • Fix this bug: IndexError: list index out of range")
+        print("  • Fix this bug: IndexError list index out of range")
         print("  • Explain how async/await works in Python")
         print("  • Review my code: [paste your code here]")
         print("  • Write unit tests for a login function")
-
     else:
         mode = "research"
         print("\n🌏 Research Mode — What would you like to research?")
@@ -154,7 +175,6 @@ if __name__ == "__main__":
     print()
     topic = input("Enter your request: ").strip()
 
-    # Use default if nothing entered
     if not topic:
         if mode == "developer":
             topic = "Write a Python function to read a CSV file and return summary statistics"

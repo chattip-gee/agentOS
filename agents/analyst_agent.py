@@ -1,18 +1,18 @@
 # agents/analyst_agent.py
 # AgentOS - Analyst Agent
-# Responsible for deep analysis and generating actionable insights
+# Powered by DeepSeek-V4-Pro — best for deep reasoning and strategic analysis
 
 import os
 from dotenv import load_dotenv
-from google import genai
+import anthropic
 
-# Load API key from .env file
 load_dotenv()
+
 
 class AnalystAgent:
     """
     Analyst Agent - The strategic thinker of AgentOS.
-    Takes research findings and produces actionable insights and recommendations.
+    Powered by DeepSeek-V4-Pro for deep reasoning and strategic analysis.
     """
 
     def __init__(self, registry, message_bus):
@@ -20,53 +20,55 @@ class AnalystAgent:
         self.registry = registry
         self.message_bus = message_bus
 
-        # Initialize Gemini client
-        self.client = genai.Client(
-            api_key=os.getenv("GOOGLE_API_KEY")
+        # DeepSeek is best for strategic analysis and reasoning
+        self.client = anthropic.Anthropic(
+            api_key=os.getenv("DEEPSEEK_API_KEY"),
+            base_url=os.getenv("ANTHROPIC_BASE_URL")
         )
+        self.model = "deepseek-v4-pro"
 
-        # Register this agent into the system
         self.registry.register(
             name=self.name,
-            description="Analyzes research findings and generates strategic insights",
-            capabilities=["analyze", "strategize", "recommend"]
+            description="Analyzes findings and generates strategic insights using DeepSeek-V4-Pro",
+            capabilities=["analyze", "strategize", "recommend"],
+            supported_models=["deepseek-v4-pro"]
         )
 
-    def run(self, research_result: str, topic: str, task_id: str):
-        """
-        Analyze research findings and produce strategic recommendations.
-        research_result: output from Research Agent
-        topic: original topic being investigated
-        task_id: unique task identifier for tracking
-        """
-        print(f"\n📊 Analyst Agent: Generating insights for '{topic}'...")
+    def _get_text(self, response):
+        """Extract text from DeepSeek response."""
+        for block in response.content:
+            if hasattr(block, "text"):
+                return block.text
+        return ""
 
-        # Craft a strategic analysis prompt
+    def run(self, research_result: str, topic: str, task_id: str):
+        """Analyze research findings and produce strategic recommendations."""
+        print(f"\n📊 Analyst Agent [DeepSeek]: Generating insights for '{topic}'...")
+
         prompt = f"""
         You are a senior strategic analyst.
         Based on the following research about '{topic}':
-        
+
         {research_result}
-        
+
         Provide a strategic analysis with this structure:
         1. STRATEGIC ASSESSMENT: Overall evaluation of the situation
         2. RISK ANALYSIS: Top 3 risks to consider
         3. STRATEGIC RECOMMENDATIONS: 3 concrete actions to take
         4. SUCCESS METRICS: How to measure success
         5. PRIORITY ACTION: The single most important thing to do first
-        
+
         Focus on actionable insights that drive real business value.
         """
 
-        # Call Gemini API
-        response = self.client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=1500,
+            messages=[{"role": "user", "content": prompt}]
         )
 
-        result = response.text
+        result = self._get_text(response)
 
-        # Store result in message bus
         self.message_bus.store_result(
             agent_name=self.name,
             task_id=task_id,
