@@ -17,6 +17,8 @@ Most AI systems use a single LLM. AgentOS is different.
 
 This is a proof of concept for **The Internet of Agents** — a future where AI agents from any provider can discover each other and collaborate through open protocols, just like devices on the internet.
 
+<img width="2720" height="2400" alt="agentOS_architecture 20 13 24" src="https://github.com/user-attachments/assets/0b779403-e5bf-4ec5-a94a-a0b7c9707da8" />
+
 ---
 
 ## 💡 The Problem
